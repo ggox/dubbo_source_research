@@ -23,13 +23,18 @@ import java.util.Arrays;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import javassist.util.proxy.ProxyFactory;
 import org.apache.dubbo.common.URL;
+import org.apache.dubbo.common.bytecode.Proxy;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
 import org.apache.dubbo.common.utils.StringUtils;
+import org.apache.logging.log4j.core.net.Protocol;
+import sun.security.ssl.ProtocolVersion;
 
 /**
  * Code generator for Adaptive class
+ * 适配器代码生成器
  */
 public class AdaptiveClassCodeGenerator {
     
@@ -377,5 +382,5 @@ public class AdaptiveClassCodeGenerator {
         code.append(String.format("%s url = arg%d.%s();\n", URL.class.getName(), index, method));
         return code.toString();
     }
-    
+
 }

@@ -625,7 +625,9 @@ public class ExtensionLoader<T> {
     }
 
     // synchronized in getExtensionClasses
+    // dubbo 增强 spi 机制
     private Map<String, Class<?>> loadExtensionClasses() {
+        // 提取并缓存默认扩展名 cachedDefaultName
         cacheDefaultExtensionName();
 
         Map<String, Class<?>> extensionClasses = new HashMap<>();
@@ -640,13 +642,16 @@ public class ExtensionLoader<T> {
 
     /**
      * extract and cache default extension name if exists
+     * 提取并缓存默认扩展名称
      */
     private void cacheDefaultExtensionName() {
         final SPI defaultAnnotation = type.getAnnotation(SPI.class);
         if (defaultAnnotation != null) {
             String value = defaultAnnotation.value();
             if ((value = value.trim()).length() > 0) {
+                // 逗号分隔
                 String[] names = NAME_SEPARATOR.split(value);
+                // 默认 spi 实现超过了一个
                 if (names.length > 1) {
                     throw new IllegalStateException("More than 1 default extension name on extension " + type.getName()
                             + ": " + Arrays.toString(names));
@@ -658,6 +663,7 @@ public class ExtensionLoader<T> {
         }
     }
 
+    // 解析目录
     private void loadDirectory(Map<String, Class<?>> extensionClasses, String dir, String type) {
         String fileName = dir + type;
         try {
@@ -680,17 +686,20 @@ public class ExtensionLoader<T> {
         }
     }
 
+    // 加载资源
     private void loadResource(Map<String, Class<?>> extensionClasses, ClassLoader classLoader, java.net.URL resourceURL) {
         try {
             try (BufferedReader reader = new BufferedReader(new InputStreamReader(resourceURL.openStream(), StandardCharsets.UTF_8))) {
                 String line;
                 while ((line = reader.readLine()) != null) {
+                    // 处理注释
                     final int ci = line.indexOf('#');
                     if (ci >= 0) {
                         line = line.substring(0, ci);
                     }
                     line = line.trim();
                     if (line.length() > 0) {
+                        // 解析键值对
                         try {
                             String name = null;
                             int i = line.indexOf('=');
@@ -699,6 +708,7 @@ public class ExtensionLoader<T> {
                                 line = line.substring(i + 1).trim();
                             }
                             if (line.length() > 0) {
+                                // 加载 class
                                 loadClass(extensionClasses, resourceURL, Class.forName(line, true, classLoader), name);
                             }
                         } catch (Throwable t) {
@@ -720,11 +730,14 @@ public class ExtensionLoader<T> {
                     type + ", class line: " + clazz.getName() + "), class "
                     + clazz.getName() + " is not subtype of interface.");
         }
+        // set value for cachedAdaptiveClass
         if (clazz.isAnnotationPresent(Adaptive.class)) {
             cacheAdaptiveClass(clazz);
         } else if (isWrapperClass(clazz)) {
+            // cachedWrapperClasses
             cacheWrapperClass(clazz);
         } else {
+            // 判断是否有无参构造器
             clazz.getConstructor();
             if (StringUtils.isEmpty(name)) {
                 name = findAnnotationName(clazz);
@@ -812,6 +825,7 @@ public class ExtensionLoader<T> {
      * test if clazz is a wrapper class
      * <p>
      * which has Constructor with given class type as its only argument
+     * 判断是不是包装类：是否拥有一个构造器，参数是目标 type
      */
     private boolean isWrapperClass(Class<?> clazz) {
         try {

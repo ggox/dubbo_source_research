@@ -31,6 +31,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
+// java bean 序列化工具类
 public final class JavaBeanSerializeUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(JavaBeanSerializeUtil.class);
@@ -109,18 +110,22 @@ public final class JavaBeanSerializeUtil {
         }
     }
 
+    // 内部序列化方式
     private static void serializeInternal(JavaBeanDescriptor descriptor, Object obj, JavaBeanAccessor accessor, IdentityHashMap<Object, JavaBeanDescriptor> cache) {
         if (obj == null || descriptor == null) {
             return;
         }
-
+        // 是枚举 直接设置枚举值
         if (obj.getClass().isEnum()) {
             descriptor.setEnumNameProperty(((Enum<?>) obj).name());
         } else if (ReflectUtils.isPrimitive(obj.getClass())) {
+            // 原始参数 设置原始值
             descriptor.setPrimitiveProperty(obj);
         } else if (Class.class.equals(obj.getClass())) {
+            // class 类型设置 class#getName()
             descriptor.setClassNameProperty(((Class<?>) obj).getName());
         } else if (obj.getClass().isArray()) {
+            // 处理数组
             int len = Array.getLength(obj);
             for (int i = 0; i < len; i++) {
                 Object item = Array.get(obj, i);
@@ -132,6 +137,7 @@ public final class JavaBeanSerializeUtil {
                 }
             }
         } else if (obj instanceof Collection) {
+            // 处理集合
             Collection collection = (Collection) obj;
             int index = 0;
             for (Object item : collection) {
@@ -143,6 +149,7 @@ public final class JavaBeanSerializeUtil {
                 }
             }
         } else if (obj instanceof Map) {
+            // 处理 map
             Map map = (Map) obj;
             map.forEach((key, value) -> {
                 Object keyDescriptor = key == null ? null : createDescriptorIfAbsent(key, accessor, cache);
@@ -150,6 +157,7 @@ public final class JavaBeanSerializeUtil {
                 descriptor.setProperty(keyDescriptor, valueDescriptor);
             });// ~ end of loop map
         } else {
+            // 如果允许访问方法 获取 get 和 is 方法
             if (JavaBeanAccessor.isAccessByMethod(accessor)) {
                 Map<String, Method> methods = ReflectUtils.getBeanPropertyReadMethods(obj.getClass());
                 for (Map.Entry<String, Method> entry : methods.entrySet()) {
@@ -205,6 +213,7 @@ public final class JavaBeanSerializeUtil {
         return result;
     }
 
+    // 内部反序列化
     private static void deserializeInternal(Object result, JavaBeanDescriptor beanDescriptor, ClassLoader loader, IdentityHashMap<JavaBeanDescriptor, Object> cache) {
         if (beanDescriptor.isEnumType() || beanDescriptor.isClassType() || beanDescriptor.isPrimitiveType()) {
             return;
@@ -435,6 +444,7 @@ public final class JavaBeanSerializeUtil {
             for (int i = 0; i < dimension; i++) {
                 dimensions[i] = 0;
             }
+            // 反射构造数组对象
             return Array.newInstance(type, dimensions).getClass();
         }
         if (isReferenceType(name)) {

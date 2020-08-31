@@ -1023,6 +1023,7 @@ public final class ReflectUtils {
                 || (method.getName().startsWith("is") && method.getName().length() > 2));
     }
 
+    // 截取 get 和 is 方法获得参数名称
     public static String getPropertyNameFromBeanReadMethod(Method method) {
         if (isBeanPropertyReadMethod(method)) {
             if (method.getName().startsWith("get")) {

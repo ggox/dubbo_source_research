@@ -28,7 +28,7 @@ import org.apache.dubbo.rpc.protocol.AbstractInvoker;
 import java.util.Map;
 
 /**
- * InjvmInvoker
+ * InjvmInvoker 在同一个 jvm 进程实例中调用服务
  */
 class InjvmInvoker<T> extends AbstractInvoker<T> {
 
