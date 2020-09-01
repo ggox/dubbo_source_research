@@ -21,6 +21,7 @@ import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.extension.support.ActivateComparator;
 import org.apache.dubbo.common.logger.Logger;
 import org.apache.dubbo.common.logger.LoggerFactory;
+import org.apache.dubbo.common.threadpool.ThreadPool;
 import org.apache.dubbo.common.utils.ArrayUtils;
 import org.apache.dubbo.common.utils.ClassHelper;
 import org.apache.dubbo.common.utils.ConcurrentHashSet;
@@ -204,6 +205,7 @@ public class ExtensionLoader<T> {
     public List<T> getActivateExtension(URL url, String[] values, String group) {
         List<T> exts = new ArrayList<>();
         List<String> names = values == null ? new ArrayList<>(0) : Arrays.asList(values);
+        // 在带有 @Activate 注解的扩展点中寻找符合要求的不是根据名称
         if (!names.contains(Constants.REMOVE_VALUE_PREFIX + Constants.DEFAULT_KEY)) {
             getExtensionClasses();
             for (Map.Entry<String, Object> entry : cachedActivates.entrySet()) {
@@ -221,10 +223,12 @@ public class ExtensionLoader<T> {
                 } else {
                     continue;
                 }
+                // 是否匹配 group
                 if (isMatchGroup(group, activateGroup)) {
                     T ext = getExtension(name);
                     if (!names.contains(name)
                             && !names.contains(Constants.REMOVE_VALUE_PREFIX + name)
+                            // 判断是否在 url 中设置
                             && isActive(activateValue, url)) {
                         exts.add(ext);
                     }
@@ -232,6 +236,7 @@ public class ExtensionLoader<T> {
             }
             exts.sort(ActivateComparator.COMPARATOR);
         }
+        // 直接根据名称获取
         List<T> usrs = new ArrayList<>();
         for (int i = 0; i < names.size(); i++) {
             String name = names.get(i);
@@ -475,6 +480,7 @@ public class ExtensionLoader<T> {
                     instance = cachedAdaptiveInstance.get();
                     if (instance == null) {
                         try {
+                            // 实际创建适配器类对象的地方
                             instance = createAdaptiveExtension();
                             cachedAdaptiveInstance.set(instance);
                         } catch (Throwable t) {
@@ -523,12 +529,14 @@ public class ExtensionLoader<T> {
             throw findException(name);
         }
         try {
+            // 都采用缓存的形式，需要是才初始化实例对象
             T instance = (T) EXTENSION_INSTANCES.get(clazz);
             if (instance == null) {
                 EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
             injectExtension(instance);
+            // 如果存在包装类型，则自动转成包装类 即 Aop 功能
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
             if (CollectionUtils.isNotEmpty(wrapperClasses)) {
                 for (Class<?> wrapperClass : wrapperClasses) {
@@ -542,23 +550,30 @@ public class ExtensionLoader<T> {
         }
     }
 
+    // 扩展点实现类相互依赖自动注入 即 Ioc 功能 核心是采用 set 注入
     private T injectExtension(T instance) {
         try {
             if (objectFactory != null) {
+                // 遍历所有的方法
                 for (Method method : instance.getClass().getMethods()) {
+                    // 是否 set 方法
                     if (isSetter(method)) {
                         /**
                          * Check {@link DisableInject} to see if we need auto injection for this property
+                         * 默认自动注入 如果不想自动注入 使用 {@link DisableInject}
                          */
                         if (method.getAnnotation(DisableInject.class) != null) {
                             continue;
                         }
                         Class<?> pt = method.getParameterTypes()[0];
+                        // 是否 dubbo 定义的原始类型，是就直接跳过自动注入环节
                         if (ReflectUtils.isPrimitives(pt)) {
                             continue;
                         }
                         try {
+                            // 属性名称,比如：setName -> name
                             String property = getSetterProperty(method);
+                            // 获取扩展实现
                             Object object = objectFactory.getExtension(pt, property);
                             if (object != null) {
                                 method.invoke(instance, object);
@@ -630,6 +645,7 @@ public class ExtensionLoader<T> {
         // 提取并缓存默认扩展名 cachedDefaultName
         cacheDefaultExtensionName();
 
+        // 指定目录的 jar 中查找扩展点
         Map<String, Class<?>> extensionClasses = new HashMap<>();
         loadDirectory(extensionClasses, DUBBO_INTERNAL_DIRECTORY, type.getName());
         loadDirectory(extensionClasses, DUBBO_INTERNAL_DIRECTORY, type.getName().replace("org.apache", "com.alibaba"));
@@ -859,10 +875,13 @@ public class ExtensionLoader<T> {
     }
 
     private Class<?> getAdaptiveExtensionClass() {
+        // 获取当前扩展接口所有实现类的 class 对象
         getExtensionClasses();
+        // 如果实现类中有注解 @Adaptive 则 cachedAdaptiveClass 不为 null 比如 Compiler
         if (cachedAdaptiveClass != null) {
             return cachedAdaptiveClass;
         }
+        // 没有带 @Adaptive 的class 就会重新编译一个适配器类 class 以 $Adaptive 结尾，笔录 Protocol$Adaptive
         return cachedAdaptiveClass = createAdaptiveExtensionClass();
     }
 
