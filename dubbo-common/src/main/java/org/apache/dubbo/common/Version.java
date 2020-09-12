@@ -144,6 +144,7 @@ public final class Version {
     public static String getVersion(Class<?> cls, String defaultVersion) {
         try {
             // find version info from MANIFEST.MF first
+            // 从 MANIFEST.MF 获取版本信息
             Package pkg = cls.getPackage();
             String version = null;
             if (pkg != null) {

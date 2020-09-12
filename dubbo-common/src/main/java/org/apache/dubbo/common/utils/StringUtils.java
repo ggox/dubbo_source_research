@@ -745,6 +745,7 @@ public final class StringUtils {
         return buf.toString();
     }
 
+    // 驼峰转化为 spit 分隔 ConfigCenter -> config-center
     public static String camelToSplitName(String camelName, String split) {
         if (isEmpty(camelName)) {
             return camelName;

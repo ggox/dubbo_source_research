@@ -229,6 +229,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     }
 
 
+    // 启动配置中心
     void startConfigCenter() {
         if (configCenter == null) {
             ConfigManager.getInstance().getConfigCenter().ifPresent(cc -> this.configCenter = cc);
@@ -321,7 +322,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     }
 
     /**
-     *
+     * 加载监视器
      * Load the monitor config from the system properties and conversation it to {@link URL}
      *
      * @param registryURL

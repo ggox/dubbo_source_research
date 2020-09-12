@@ -264,9 +264,10 @@ public class DubboProtocol extends AbstractProtocol {
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
         URL url = invoker.getUrl();
 
-        // export service.
+        // export service. invoker 到 exporter 的转换
         String key = serviceKey(url);
         DubboExporter<T> exporter = new DubboExporter<T>(invoker, key, exporterMap);
+        // 保存到一个 map 中，在服务提供方处理请求时使用
         exporterMap.put(key, exporter);
 
         //export an stub service for dispatching event
@@ -285,12 +286,16 @@ public class DubboProtocol extends AbstractProtocol {
             }
         }
 
+        // 同一个机器的不同服务导出只会开启一个 NettyServer
         openServer(url);
         optimizeSerialization(url);
 
         return exporter;
     }
 
+    /**
+     * 开启 NettyServer 一个 address 对应一个 NettyServer
+     */
     private void openServer(URL url) {
         // find server.
         String key = url.getAddress();
@@ -312,6 +317,9 @@ public class DubboProtocol extends AbstractProtocol {
         }
     }
 
+    /**
+     * 创建 NettyServer
+     */
     private ExchangeServer createServer(URL url) {
         url = URLBuilder.from(url)
                 // send readonly event when server closes, it's enabled by default

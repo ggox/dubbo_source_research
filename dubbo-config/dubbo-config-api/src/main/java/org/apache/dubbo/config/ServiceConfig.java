@@ -325,15 +325,20 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     public synchronized void export() {
+        // 校验和更新配置
         checkAndUpdateSubConfigs();
 
+        // 是否需要导出
         if (!shouldExport()) {
             return;
         }
 
+        // 是否延迟发布
         if (shouldDelay()) {
+            // 用 ScheduledExecutorService 实现延迟发布
             delayExportExecutor.schedule(this::doExport, delay, TimeUnit.MILLISECONDS);
         } else {
+            // 直接发布
             doExport();
         }
     }
@@ -409,6 +414,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
+        // 加载所有的服务注册中心对象
         List<URL> registryURLs = loadRegistries(true);
         for (ProtocolConfig protocolConfig : protocols) {
             String pathKey = URL.buildKey(getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), group, version);
@@ -419,6 +425,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> registryURLs) {
+        // 1. 解析配置
         String name = protocolConfig.getName();
         if (StringUtils.isEmpty(name)) {
             name = Constants.DUBBO;
@@ -488,23 +495,27 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             } // end of methods for
         }
 
+        // 2. 判断是否为泛型调用
         if (ProtocolUtils.isGeneric(generic)) {
             map.put(Constants.GENERIC_KEY, generic);
             map.put(Constants.METHODS_KEY, Constants.ANY_VALUE);
         } else {
+            // 3. 正常调用时设置相关参数
             String revision = Version.getVersion(interfaceClass, version);
             if (revision != null && revision.length() > 0) {
                 map.put("revision", revision);
             }
 
+            // 通过 Wrapper 类获取 所有方法名称
             String[] methods = Wrapper.getWrapper(interfaceClass).getMethodNames();
             if (methods.length == 0) {
                 logger.warn("No method found in service interface " + interfaceClass.getName());
                 map.put(Constants.METHODS_KEY, Constants.ANY_VALUE);
             } else {
-                map.put(Constants.METHODS_KEY, StringUtils.join(new HashSet<String>(Arrays.asList(methods)), ","));
+                map.put(Constants.METHODS_KEY, StringUtils.join(new HashSet<>(Arrays.asList(methods)), ","));
             }
         }
+        // 是否开启 token
         if (!ConfigUtils.isEmpty(token)) {
             if (ConfigUtils.isDefault(token)) {
                 map.put(Constants.TOKEN_KEY, UUID.randomUUID().toString());
@@ -512,23 +523,26 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 map.put(Constants.TOKEN_KEY, token);
             }
         }
-        // export service
+        // export service 4. 拼接 url 对象
         String host = this.findConfigedHosts(protocolConfig, registryURLs, map);
         Integer port = this.findConfigedPorts(protocolConfig, name, map);
         URL url = new URL(name, host, port, getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), map);
 
+        // 如果配置了该协议的配置工厂扩展点，则使用该扩展配置工厂进行处理
         if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
                 .hasExtension(url.getProtocol())) {
             url = ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
                     .getExtension(url.getProtocol()).getConfigurator(url).configure(url);
         }
 
+        // 获取 scope  如果 scope 为 none 则不导出服务
         String scope = url.getParameter(Constants.SCOPE_KEY);
         // don't export when none is configured
         if (!Constants.SCOPE_NONE.equalsIgnoreCase(scope)) {
 
             // export to local if the config is not remote (export to remote only when config is remote)
             if (!Constants.SCOPE_REMOTE.equalsIgnoreCase(scope)) {
+                // 导出服务到本地 使用 injvm 协议
                 exportLocal(url);
             }
             // export to remote if the config is not local (export to local only when config is local)
@@ -553,13 +567,18 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                             registryURL = registryURL.addParameter(Constants.PROXY_KEY, proxy);
                         }
 
+                        // 服务导出代码
+                        // 默认使用 JavassistProxyFactory
                         Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(Constants.EXPORT_KEY, url.toFullString()));
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
 
+                        // 如果是远程服务发布，根据 Protocol 类型为 registry,最终调用 RegistryProtocol
+                        // 由于扩展点的 aop 特性，在调用 RegistryProtocol 的 export 方法前会一次调用 QosProtocolWrapper ProtocolListenerWrapper ProtocolFilterWrapper 的 export 方法
                         Exporter<?> exporter = protocol.export(wrapperInvoker);
                         exporters.add(exporter);
                     }
                 } else {
+                    // 直连模式
                     Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
                     DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
 
@@ -567,6 +586,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                     exporters.add(exporter);
                 }
                 /**
+                 * 元数据存储
                  * @since 2.7.0
                  * ServiceData Store
                  */
@@ -594,6 +614,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         }
     }
 
+    // 如果配置了 contextPath 需要在服务名称前加上 contextPath
     private Optional<String> getContextPath(ProtocolConfig protocolConfig) {
         String contextPath = protocolConfig.getContextpath();
         if (StringUtils.isEmpty(contextPath) && provider != null) {
@@ -607,6 +628,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     /**
+     * 获取服务提供者的 ip 地址，可以通过环境变量等手动配置而不一定是本机的实际ip
      * Register & bind IP address for service provider, can be configured separately.
      * Configuration priority: environment variables -> java system properties -> host property in config file ->
      * /etc/hosts -> default network address -> first available network address
@@ -622,7 +644,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         String hostToBind = getValueFromConfig(protocolConfig, Constants.DUBBO_IP_TO_BIND);
 
         // if bind ip is not found in environment, keep looking up
-        if (StringUtils.isEmpty(hostToBind)) {
+    if (StringUtils.isEmpty(hostToBind)) {
             hostToBind = protocolConfig.getHost();
             if (provider != null && StringUtils.isEmpty(hostToBind)) {
                 hostToBind = provider.getHost();
@@ -652,6 +674,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         return hostToRegistry;
     }
 
+    // 通过注册中心尝试连接，然后通过 socket.getLocalAddress() 获取本地地址
     private String findHostToBindByConnectRegistries(List<URL> registryURLs) {
         if (CollectionUtils.isNotEmpty(registryURLs)) {
             for (URL registryURL : registryURLs) {

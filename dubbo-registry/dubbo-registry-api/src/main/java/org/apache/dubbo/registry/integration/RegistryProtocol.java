@@ -181,6 +181,7 @@ public class RegistryProtocol implements Protocol {
 
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
         //export invoker
+        // 内部启动了 NettyServer 进行服务监听
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
         // url to registry
@@ -215,8 +216,10 @@ public class RegistryProtocol implements Protocol {
     private <T> ExporterChangeableWrapper<T> doLocalExport(final Invoker<T> originInvoker, URL providerUrl) {
         String key = getCacheKey(originInvoker);
 
+        // 返回 ExporterChangeableWrapper 并缓存
         return (ExporterChangeableWrapper<T>) bounds.computeIfAbsent(key, s -> {
             Invoker<?> invokerDelegete = new InvokerDelegate<>(originInvoker, providerUrl);
+            // 这里根据扩展点的 Ioc 功能，protocol -> Protocol$Adaptive 根据 url 的 protocol 最终调用 DubboProtocol
             return new ExporterChangeableWrapper<>((Exporter<T>) protocol.export(invokerDelegete), originInvoker);
         });
     }

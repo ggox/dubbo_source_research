@@ -124,6 +124,7 @@ public class NetUtils {
                 new InetSocketAddress(port) : new InetSocketAddress(host, port);
     }
 
+    // 是否有效的 ipv4 地址
     static boolean isValidV4Address(InetAddress address) {
         String name = address.getHostAddress();
         return (name != null
@@ -133,12 +134,14 @@ public class NetUtils {
     }
 
     /**
+     * 测试 ipv6 地址是否可达
      * Check if an ipv6 address is reachable.
      *
      * @param address the given address
      * @return true if it is reachable
      */
     static boolean isValidV6Address(Inet6Address address) {
+        // 受限得开启这个参数 java.net.preferIPv6Addresses
         boolean preferIpv6 = Boolean.getBoolean("java.net.preferIPv6Addresses");
         if (!preferIpv6) {
             return false;
@@ -151,11 +154,13 @@ public class NetUtils {
         return false;
     }
 
+    // 是否有效的公开地址
     static boolean isValidPublicAddress(InetAddress address) {
         return !address.isSiteLocalAddress() && !address.isLoopbackAddress();
     }
 
     /**
+     * 统一化 ipv6 地址
      * normalize the ipv6 Address, convert scope name to scope id.
      * e.g.
      * convert
@@ -211,6 +216,7 @@ public class NetUtils {
     }
 
     /**
+     * 从本地网卡寻找第一个有效 ip
      * Find first valid IP from local network card
      *
      * @return first valid local IP
@@ -224,6 +230,7 @@ public class NetUtils {
         return localAddress;
     }
 
+    // 转化成有效的地址
     private static Optional<InetAddress> toValidAddress(InetAddress address) {
         if (isValidPublicAddress(address)) {
             if (address instanceof Inet6Address) {
