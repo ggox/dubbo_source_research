@@ -31,7 +31,7 @@ import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.Map;
 
-// java bean 序列化工具类
+// java bean 序列化工具类 观其源码，发现应该是不支持继承 Collection 或者 Map,又具备自身属性的类
 public final class JavaBeanSerializeUtil {
 
     private static final Logger logger = LoggerFactory.getLogger(JavaBeanSerializeUtil.class);
@@ -74,6 +74,7 @@ public final class JavaBeanSerializeUtil {
         if (obj instanceof JavaBeanDescriptor) {
             return (JavaBeanDescriptor) obj;
         }
+        // IdentityHashMap 与 HashMap 不同，计算 key 的 hash 时使用 System.identityHashCode() 方法
         IdentityHashMap<Object, JavaBeanDescriptor> cache = new IdentityHashMap<Object, JavaBeanDescriptor>();
         JavaBeanDescriptor result = createDescriptorIfAbsent(obj, accessor, cache);
         return result;
