@@ -198,9 +198,13 @@ public class AdaptiveClassCodeGenerator {
     private String generateMethodContent(Method method) {
         Adaptive adaptiveAnnotation = method.getAnnotation(Adaptive.class);
         StringBuilder code = new StringBuilder(512);
+        // 如果没有 Adaptive 方法，直接抛出异常
         if (adaptiveAnnotation == null) {
             return generateUnsupported(method);
         } else {
+            /**
+             * 针对 {@link URL} 这个参数特殊处理
+             */
             int urlTypeIndex = getUrlTypeIndex(method);
             
             // found parameter in URL type
@@ -209,6 +213,7 @@ public class AdaptiveClassCodeGenerator {
                 code.append(generateUrlNullCheck(urlTypeIndex));
             } else {
                 // did not find parameter in URL type
+                // 直接方法参数没有 URL,则查询方法参数的 get方法，如果没有抛异常，也就是说 @adaptive 标记的接口肯定会和URL相关，一般通过URL查找真正需要使用的扩展对象, 如Protocol的export方法的Invoker中有getUrl方法
                 code.append(generateUrlAssignmentIndirectly(method));
             }
 
@@ -350,7 +355,7 @@ public class AdaptiveClassCodeGenerator {
                         && Modifier.isPublic(m.getModifiers())
                         && !Modifier.isStatic(m.getModifiers())
                         && m.getParameterTypes().length == 0
-                        && m.getReturnType() == URL.class) {
+                        && m.getReturnType() == URL.class) { // get方法返回类型是URL
                     return generateGetUrlNullCheck(i, pts[i], name);
                 }
             }

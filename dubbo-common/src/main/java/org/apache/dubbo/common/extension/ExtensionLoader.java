@@ -863,7 +863,7 @@ public class ExtensionLoader<T> {
     private Class<?> getAdaptiveExtensionClass() {
         // 获取当前扩展接口所有实现类的 class 对象
         getExtensionClasses();
-        // 如果实现类中有注解 @Adaptive 则 cachedAdaptiveClass 不为 null 比如 Compiler
+        // 如果实现类中有注解 @Adaptive 则 cachedAdaptiveClass 不为 null 比如 AdaptiveCompiler
         if (cachedAdaptiveClass != null) {
             return cachedAdaptiveClass;
         }
