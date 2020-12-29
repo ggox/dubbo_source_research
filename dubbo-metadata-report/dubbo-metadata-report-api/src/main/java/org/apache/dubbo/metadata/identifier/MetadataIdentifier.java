@@ -26,11 +26,11 @@ public class MetadataIdentifier {
     public static final String SEPARATOR = ":";
     final static String DEFAULT_PATH_TAG = "metadata";
 
-    private String serviceInterface;
-    private String version;
-    private String group;
+    private String serviceInterface; // 接口名称
+    private String version; // 版本
+    private String group; // 组
     private String side;
-    private String application;
+    private String application; // 应用
 
     public MetadataIdentifier() {
     }
