@@ -417,10 +417,14 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     private void doExportUrls() {
         // 加载所有的服务注册中心对象
         List<URL> registryURLs = loadRegistries(true);
+        // 遍历协议集合
         for (ProtocolConfig protocolConfig : protocols) {
             String pathKey = URL.buildKey(getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), group, version);
+            // 封装成 ProviderModel
             ProviderModel providerModel = new ProviderModel(pathKey, ref, interfaceClass);
+            // 将 ProviderModel 挂载到 ApplicationModel 上
             ApplicationModel.initProviderModel(pathKey, providerModel);
+            // 为单个 protocol 导出 Urls
             doExportUrlsFor1Protocol(protocolConfig, registryURLs);
         }
     }
@@ -429,7 +433,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         // 1. 解析配置
         String name = protocolConfig.getName();
         if (StringUtils.isEmpty(name)) {
-            name = Constants.DUBBO;
+            name = Constants.DUBBO; // 默认 protocol
         }
 
         Map<String, String> map = new HashMap<String, String>();
@@ -441,12 +445,13 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         appendParameters(map, protocolConfig);
         appendParameters(map, this);
         if (CollectionUtils.isNotEmpty(methods)) {
+            // 将方法级别的个性化配置添加到当前服务配置中
             for (MethodConfig method : methods) {
                 appendParameters(map, method, method.getName());
                 String retryKey = method.getName() + ".retry";
                 if (map.containsKey(retryKey)) {
                     String retryValue = map.remove(retryKey);
-                    if ("false".equals(retryValue)) {
+                    if ("false".equals(retryValue)) { // 适配 retry为false的情况（重试次数为0）
                         map.put(method.getName() + ".retries", "0");
                     }
                 }
@@ -525,8 +530,8 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             }
         }
         // export service 4. 拼接 url 对象
-        String host = this.findConfigedHosts(protocolConfig, registryURLs, map);
-        Integer port = this.findConfigedPorts(protocolConfig, name, map);
+        String host = this.findConfigedHosts(protocolConfig, registryURLs, map); // 返回的是注册用的ip
+        Integer port = this.findConfigedPorts(protocolConfig, name, map); // 放回的是注册用的端口
         URL url = new URL(name, host, port, getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), map);
 
         // 如果配置了该协议的配置工厂扩展点，则使用该扩展配置工厂进行处理
@@ -552,6 +557,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                     logger.info("Export dubbo service " + interfaceClass.getName() + " to url " + url);
                 }
                 if (CollectionUtils.isNotEmpty(registryURLs)) {
+                    // 遍历注册中心，分别导出到各个注册中心
                     for (URL registryURL : registryURLs) {
                         url = url.addParameterIfAbsent(Constants.DYNAMIC_KEY, registryURL.getParameter(Constants.DYNAMIC_KEY));
                         URL monitorUrl = loadMonitor(registryURL);
@@ -642,10 +648,11 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     private String findConfigedHosts(ProtocolConfig protocolConfig, List<URL> registryURLs, Map<String, String> map) {
         boolean anyhost = false;
 
+        // 从系统参数获取，优先级最高
         String hostToBind = getValueFromConfig(protocolConfig, Constants.DUBBO_IP_TO_BIND);
 
         // if bind ip is not found in environment, keep looking up
-    if (StringUtils.isEmpty(hostToBind)) {
+        if (StringUtils.isEmpty(hostToBind)) {
             hostToBind = protocolConfig.getHost();
             if (provider != null && StringUtils.isEmpty(hostToBind)) {
                 hostToBind = provider.getHost();
@@ -655,6 +662,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                 anyhost = true;
                 hostToBind = getLocalHost();
 
+                // 还获取不到的话，通过尝试连接注册中心，获取本地ip
                 if (StringUtils.isEmpty(hostToBind)) {
                     hostToBind = findHostToBindByConnectRegistries(registryURLs);
                 }
@@ -663,7 +671,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
         map.put(Constants.BIND_IP_KEY, hostToBind);
 
-        // registry ip is not used for bind ip by default
+        // registry ip is not used for bind ip by default 注册时使用的ip
         String hostToRegistry = getValueFromConfig(protocolConfig, Constants.DUBBO_IP_TO_REGISTRY);
         if (StringUtils.isEmpty(hostToRegistry)) {
             // bind ip is used as registry ip by default

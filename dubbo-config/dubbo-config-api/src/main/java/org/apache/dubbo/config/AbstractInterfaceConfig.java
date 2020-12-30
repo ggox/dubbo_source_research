@@ -282,7 +282,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
      *
      * Load the registry and conversion it to {@link URL}, the priority order is: system property > dubbo registry config
      *
-     * @param provider whether it is the provider side
+     * @param provider whether it is the provider side 判断是否是服务提供方
      * @return
      */
     protected List<URL> loadRegistries(boolean provider) {
@@ -301,13 +301,17 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
                     map.put(Constants.PATH_KEY, RegistryService.class.getName());
                     appendRuntimeParameters(map);
                     if (!map.containsKey(Constants.PROTOCOL_KEY)) {
+                        // 如果没有设置 protocol 默认为 dubbo
                         map.put(Constants.PROTOCOL_KEY, Constants.DUBBO_PROTOCOL);
                     }
+                    // 将地址和参数转化成 URL
                     List<URL> urls = UrlUtils.parseURLs(address, map);
 
                     for (URL url : urls) {
                         url = URLBuilder.from(url)
+                                // url 的原始 protocol 复制到 registry 上
                                 .addParameter(Constants.REGISTRY_KEY, url.getProtocol())
+                                // 将 protocol 覆盖为 registry 表明这是一个注册配置的 URL
                                 .setProtocol(Constants.REGISTRY_PROTOCOL)
                                 .build();
                         if ((provider && url.getParameter(Constants.REGISTER_KEY, true))
@@ -365,6 +369,9 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         return null;
     }
 
+    /**
+     * 添加运行时参数，包括：protocolVersion releaseVersion timestamp pid 等
+     */
     static void appendRuntimeParameters(Map<String, String> map) {
         map.put(Constants.DUBBO_VERSION_KEY, Version.getProtocolVersion());
         map.put(Constants.RELEASE_KEY, Version.getVersion());
