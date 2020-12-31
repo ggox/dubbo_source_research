@@ -61,6 +61,9 @@ public class DelegateProviderMetaDataInvoker<T> implements Invoker {
         invoker.destroy();
     }
 
+    /**
+     * 多了这个获取元信息的方法
+     */
     public ServiceConfig getMetadata() {
         return metadata;
     }

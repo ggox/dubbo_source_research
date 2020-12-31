@@ -24,6 +24,7 @@ import org.apache.dubbo.remoting.ChannelHandler;
 import org.apache.dubbo.remoting.RemotingException;
 import org.apache.dubbo.remoting.exchange.support.ExchangeHandlerDispatcher;
 import org.apache.dubbo.remoting.exchange.support.Replier;
+import org.apache.dubbo.remoting.exchange.support.header.HeaderExchanger;
 import org.apache.dubbo.remoting.transport.ChannelHandlerAdapter;
 
 /**
@@ -110,7 +111,11 @@ public class Exchangers {
     }
 
     public static Exchanger getExchanger(URL url) {
+        // 获取 exchanger,默认是 header
         String type = url.getParameter(Constants.EXCHANGER_KEY, Constants.DEFAULT_EXCHANGER);
+        /**
+         * 默认是 {@link HeaderExchanger}
+         */
         return getExchanger(type);
     }
 

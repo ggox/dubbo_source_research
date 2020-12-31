@@ -66,6 +66,7 @@ public class NettyServer extends AbstractServer implements Server {
     private EventLoopGroup workerGroup;
 
     public NettyServer(URL url, ChannelHandler handler) throws RemotingException {
+        // 这里将handler进行多次封装，最后返回MultiMessageHandler
         super(url, ChannelHandlers.wrap(handler, ExecutorUtil.setThreadName(url, SERVER_THREAD_POOL_NAME)));
     }
 
@@ -74,6 +75,7 @@ public class NettyServer extends AbstractServer implements Server {
         bootstrap = new ServerBootstrap();
 
         bossGroup = new NioEventLoopGroup(1, new DefaultThreadFactory("NettyServerBoss", true));
+        // io线程数，默认：处理器数量+1 和 32 的最小值
         workerGroup = new NioEventLoopGroup(getUrl().getPositiveParameter(Constants.IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS),
                 new DefaultThreadFactory("NettyServerWorker", true));
 
@@ -82,8 +84,11 @@ public class NettyServer extends AbstractServer implements Server {
 
         bootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
+                // 设置 TCP_NODELAY 参数，禁用 Nagle 算法，允许发送小包
                 .childOption(ChannelOption.TCP_NODELAY, Boolean.TRUE)
+                // 设置 SO_REUSEADDR，让关闭连接释放的端口今早可使用
                 .childOption(ChannelOption.SO_REUSEADDR, Boolean.TRUE)
+                // 启用netty的池化分配器，使用内存池技术，默认使用的是非池化分配器 -> UnpooledByteBufAllocator
                 .childOption(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                 .childHandler(new ChannelInitializer<NioSocketChannel>() {
                     @Override
@@ -100,9 +105,9 @@ public class NettyServer extends AbstractServer implements Server {
                 });
         // bind
         ChannelFuture channelFuture = bootstrap.bind(getBindAddress());
+        // 同步等待绑定端口成功
         channelFuture.syncUninterruptibly();
         channel = channelFuture.channel();
-
     }
 
     @Override

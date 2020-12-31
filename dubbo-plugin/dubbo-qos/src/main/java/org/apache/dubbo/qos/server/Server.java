@@ -83,6 +83,7 @@ public class Server {
             return;
         }
         boss = new NioEventLoopGroup(1, new DefaultThreadFactory("qos-boss", true));
+        // 为0时，netty最终会使用默认线程数
         worker = new NioEventLoopGroup(0, new DefaultThreadFactory("qos-worker", true));
         ServerBootstrap serverBootstrap = new ServerBootstrap();
         serverBootstrap.group(boss, worker);

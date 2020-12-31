@@ -221,7 +221,7 @@ public class ExtensionLoader<T> {
             }
             exts.sort(ActivateComparator.COMPARATOR);
         }
-        // 直接根据名称获取
+        // 直接根据名称获取（xml配置等场景用到）
         List<T> usrs = new ArrayList<>();
         for (int i = 0; i < names.size(); i++) {
             String name = names.get(i);

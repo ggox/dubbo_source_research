@@ -174,12 +174,14 @@ public class RegistryProtocol implements Protocol {
         // Subscribe the override data
         // FIXME When the provider subscribes, it will affect the scene : a certain JVM exposes the service and call
         //  the same service. Because the subscribed is cached key with the name of the service, it causes the
-        //  subscription information to cover.
+        //  subscription information to cover. 发布服务同时又消费同一服务，会导致订阅信息被覆盖，应该是用的缓存key和服务名有关
         final URL overrideSubscribeUrl = getSubscribedOverrideUrl(providerUrl);
         final OverrideListener overrideSubscribeListener = new OverrideListener(overrideSubscribeUrl, originInvoker);
         overrideListeners.put(overrideSubscribeUrl, overrideSubscribeListener);
 
+        // 是用config覆盖url
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
+
         //export invoker
         // 内部启动了 NettyServer 进行服务监听
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
@@ -279,6 +281,7 @@ public class RegistryProtocol implements Protocol {
     private URL getRegistryUrl(Invoker<?> originInvoker) {
         URL registryUrl = originInvoker.getUrl();
         if (REGISTRY_PROTOCOL.equals(registryUrl.getProtocol())) {
+            // 还原原始 protocol
             String protocol = registryUrl.getParameter(REGISTRY_KEY, DEFAULT_DIRECTORY);
             registryUrl = registryUrl.setProtocol(protocol).removeParameter(REGISTRY_KEY);
         }

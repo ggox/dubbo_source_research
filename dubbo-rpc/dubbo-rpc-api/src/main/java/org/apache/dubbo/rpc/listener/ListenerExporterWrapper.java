@@ -47,6 +47,7 @@ public class ListenerExporterWrapper<T> implements Exporter<T> {
             for (ExporterListener listener : listeners) {
                 if (listener != null) {
                     try {
+                        // 当前包装对象存在的时候，exporter已经exported了，所以直接回调监听器的exported方法
                         listener.exported(this);
                     } catch (RuntimeException t) {
                         logger.error(t.getMessage(), t);
@@ -54,6 +55,7 @@ public class ListenerExporterWrapper<T> implements Exporter<T> {
                     }
                 }
             }
+            // 这里有坑点，多个监听器如果都异常了只会抛出最后一个异常
             if (exception != null) {
                 throw exception;
             }

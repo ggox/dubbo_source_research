@@ -40,6 +40,8 @@ import org.apache.dubbo.rpc.ProxyFactory;
 import org.apache.dubbo.rpc.cluster.ConfiguratorFactory;
 import org.apache.dubbo.rpc.model.ApplicationModel;
 import org.apache.dubbo.rpc.model.ProviderModel;
+import org.apache.dubbo.rpc.protocol.injvm.InjvmProtocol;
+import org.apache.dubbo.rpc.proxy.javassist.JavassistProxyFactory;
 import org.apache.dubbo.rpc.service.GenericService;
 import org.apache.dubbo.rpc.support.ProtocolUtils;
 
@@ -531,7 +533,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         }
         // export service 4. 拼接 url 对象
         String host = this.findConfigedHosts(protocolConfig, registryURLs, map); // 返回的是注册用的ip
-        Integer port = this.findConfigedPorts(protocolConfig, name, map); // 放回的是注册用的端口
+        Integer port = this.findConfigedPorts(protocolConfig, name, map); // 返回的是注册用的端口
         URL url = new URL(name, host, port, getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), map);
 
         // 如果配置了该协议的配置工厂扩展点，则使用该扩展配置工厂进行处理
@@ -589,6 +591,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                     Invoker<?> invoker = proxyFactory.getInvoker(ref, (Class) interfaceClass, url);
                     DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
 
+                    // 此时 url 默认的 protocol 是 dubbo,调用的是 DubboProtocol
                     Exporter<?> exporter = protocol.export(wrapperInvoker);
                     exporters.add(exporter);
                 }
@@ -614,8 +617,14 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                     .setHost(LOCALHOST_VALUE)
                     .setPort(0)
                     .build();
+            /**
+             * @see InjvmProtocol
+             */
             Exporter<?> exporter = protocol.export(
-                    proxyFactory.getInvoker(ref, (Class) interfaceClass, local));
+                /**
+                 * @see JavassistProxyFactory
+                 */
+                proxyFactory.getInvoker(ref, (Class) interfaceClass, local));
             exporters.add(exporter);
             logger.info("Export dubbo service " + interfaceClass.getName() + " to local registry");
         }

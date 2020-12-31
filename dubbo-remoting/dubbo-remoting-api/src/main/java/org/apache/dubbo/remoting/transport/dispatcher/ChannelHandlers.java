@@ -43,6 +43,9 @@ public class ChannelHandlers {
     }
 
     protected ChannelHandler wrapInternal(ChannelHandler handler, URL url) {
+        // 1. 通过 Dispatcher 处理 handler,有各种类型的 Dispatcher,对应各种线程模型，默认是 all，对应 AllDispatcher,全部交给业务线程池处理
+        // 2. 把 dispatch返回的channelHandler 包装成 HeartbeatHandler
+        // 3. 再包装成 MultiMessageHandler
         return new MultiMessageHandler(new HeartbeatHandler(ExtensionLoader.getExtensionLoader(Dispatcher.class)
                 .getAdaptiveExtension().dispatch(handler, url)));
     }

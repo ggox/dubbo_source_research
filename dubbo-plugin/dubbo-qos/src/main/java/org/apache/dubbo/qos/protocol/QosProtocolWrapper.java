@@ -56,6 +56,7 @@ public class QosProtocolWrapper implements Protocol {
 
     @Override
     public <T> Exporter<T> export(Invoker<T> invoker) throws RpcException {
+        // 如果是registry(远程export)，startQosServer
         if (Constants.REGISTRY_PROTOCOL.equals(invoker.getUrl().getProtocol())) {
             startQosServer(invoker.getUrl());
             return protocol.export(invoker);
@@ -84,6 +85,7 @@ public class QosProtocolWrapper implements Protocol {
                 return;
             }
 
+            // 开关
             boolean qosEnable = url.getParameter(QOS_ENABLE, true);
             if (!qosEnable) {
                 logger.info("qos won't be started because it is disabled. " +
@@ -94,6 +96,7 @@ public class QosProtocolWrapper implements Protocol {
 
             int port = url.getParameter(QOS_PORT, QosConstants.DEFAULT_PORT);
             boolean acceptForeignIp = Boolean.parseBoolean(url.getParameter(ACCEPT_FOREIGN_IP, "false"));
+            // 单例模式，只有一个QosServer
             Server server = Server.getInstance();
             server.setPort(port);
             server.setAcceptForeignIp(acceptForeignIp);

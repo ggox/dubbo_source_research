@@ -241,6 +241,7 @@ public class DubboProtocol extends AbstractProtocol {
         }
 
         String serviceKey = serviceKey(port, path, inv.getAttachments().get(Constants.VERSION_KEY), inv.getAttachments().get(Constants.GROUP_KEY));
+        // 从map中找到含有实现类的exporter
         DubboExporter<?> exporter = (DubboExporter<?>) exporterMap.get(serviceKey);
 
         if (exporter == null) {
@@ -288,6 +289,8 @@ public class DubboProtocol extends AbstractProtocol {
 
         // 同一个机器的不同服务导出只会开启一个 NettyServer
         openServer(url);
+
+        // 处理序列化优化器
         optimizeSerialization(url);
 
         return exporter;
@@ -322,12 +325,14 @@ public class DubboProtocol extends AbstractProtocol {
      */
     private ExchangeServer createServer(URL url) {
         url = URLBuilder.from(url)
-                // send readonly event when server closes, it's enabled by default
+                // send readonly event when server closes, it's enabled by default 服务关闭的情况下只发送【只读】事件
                 .addParameterIfAbsent(Constants.CHANNEL_READONLYEVENT_SENT_KEY, Boolean.TRUE.toString())
-                // enable heartbeat by default
+                // enable heartbeat by default 心跳监测，默认间隔60秒
                 .addParameterIfAbsent(Constants.HEARTBEAT_KEY, String.valueOf(Constants.DEFAULT_HEARTBEAT))
+                // 默认编解码器 dubbo
                 .addParameter(Constants.CODEC_KEY, DubboCodec.NAME)
                 .build();
+        // Transporter选择，默认使用netty, 这里的netty对应的是netty4实现，netty3对应的才是netty3实现
         String str = url.getParameter(Constants.SERVER_KEY, Constants.DEFAULT_REMOTING_SERVER);
 
         if (str != null && str.length() > 0 && !ExtensionLoader.getExtensionLoader(Transporter.class).hasExtension(str)) {

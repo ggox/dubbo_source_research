@@ -99,6 +99,7 @@ final class NettyChannel extends AbstractChannel {
         int timeout = 0;
         try {
             ChannelFuture future = channel.writeAndFlush(message);
+            // 如何sent为true，要等到数据flush到socket才返回，默认等待1秒
             if (sent) {
                 timeout = getUrl().getPositiveParameter(Constants.TIMEOUT_KEY, Constants.DEFAULT_TIMEOUT);
                 success = future.await(timeout);
@@ -111,6 +112,7 @@ final class NettyChannel extends AbstractChannel {
             throw new RemotingException(this, "Failed to send message " + message + " to " + getRemoteAddress() + ", cause: " + e.getMessage(), e);
         }
 
+        // 等待超时，数据仍未刷新到socket，直接抛异常
         if (!success) {
             throw new RemotingException(this, "Failed to send message " + message + " to " + getRemoteAddress()
                     + "in timeout(" + timeout + "ms) limit");
