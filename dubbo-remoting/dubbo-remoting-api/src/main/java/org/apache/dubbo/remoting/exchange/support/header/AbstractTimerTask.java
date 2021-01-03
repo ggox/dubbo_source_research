@@ -86,6 +86,7 @@ public abstract class AbstractTimerTask implements TimerTask {
             }
             doTask(channel);
         }
+        // 重置任务
         reput(timeout, tick);
     }
 

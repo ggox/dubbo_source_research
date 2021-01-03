@@ -104,6 +104,7 @@ public class RegistryProtocol implements Protocol {
     private final ConcurrentMap<String, ExporterChangeableWrapper<?>> bounds = new ConcurrentHashMap<>();
     private Cluster cluster;
     private Protocol protocol;
+    // 这个registryFactory是通过自带的ioc通过set方法注入的
     private RegistryFactory registryFactory;
     private ProxyFactory proxyFactory;
 
@@ -275,6 +276,7 @@ public class RegistryProtocol implements Protocol {
      */
     private Registry getRegistry(final Invoker<?> originInvoker) {
         URL registryUrl = getRegistryUrl(originInvoker);
+        // 通过url的protocol获取对应的注册工厂，比如：ZookeeperRegistryFactory
         return registryFactory.getRegistry(registryUrl);
     }
 

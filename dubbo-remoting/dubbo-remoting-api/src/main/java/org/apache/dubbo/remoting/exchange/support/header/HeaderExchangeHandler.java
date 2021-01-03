@@ -72,13 +72,16 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
     }
 
     void handlerEvent(Channel channel, Request req) throws RemotingException {
+        // 只读事件
         if (req.getData() != null && req.getData().equals(Request.READONLY_EVENT)) {
+            // 设置只读标志，是应用层的控制而非tcp连接层
             channel.setAttribute(Constants.CHANNEL_ATTRIBUTE_READONLY_KEY, Boolean.TRUE);
         }
     }
 
     void handleRequest(final ExchangeChannel channel, Request req) throws RemotingException {
         Response res = new Response(req.getId(), req.getVersion());
+        // 处于损坏状态，可能是解码失败等
         if (req.isBroken()) {
             Object data = req.getData();
 
@@ -99,7 +102,7 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
         // find handler by message class.
         Object msg = req.getData();
         try {
-            // handle data.
+            // handle data. 直接调 reply 方法
             CompletableFuture<Object> future = handler.reply(channel, msg);
             if (future.isDone()) {
                 res.setStatus(Response.OK);
@@ -107,6 +110,7 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
                 channel.send(res);
                 return;
             }
+            // 等待处理完成
             future.whenComplete((result, t) -> {
                 try {
                     if (t == null) {
@@ -187,28 +191,35 @@ public class HeaderExchangeHandler implements ChannelHandlerDelegate {
 
     @Override
     public void received(Channel channel, Object message) throws RemotingException {
+        // 重置读请求
         channel.setAttribute(KEY_READ_TIMESTAMP, System.currentTimeMillis());
         final ExchangeChannel exchangeChannel = HeaderExchangeChannel.getOrAddChannel(channel);
         try {
             if (message instanceof Request) {
                 // handle request.
                 Request request = (Request) message;
+                // 是不是事件
                 if (request.isEvent()) {
+                    // 处理事件
                     handlerEvent(channel, request);
                 } else {
+                    // 需要有返回值的请求
                     if (request.isTwoWay()) {
+                        // 处理请求
                         handleRequest(exchangeChannel, request);
                     } else {
+                        // 不需要有返回值的请求，继续往下调received
                         handler.received(exchangeChannel, request.getData());
                     }
                 }
-            } else if (message instanceof Response) {
+            } else if (message instanceof Response) { // 处理响应
                 handleResponse(channel, (Response) message);
             } else if (message instanceof String) {
-                if (isClientSide(channel)) {
+                if (isClientSide(channel)) { // 当前是客户端直接打印异常
                     Exception e = new Exception("Dubbo client can not supported string message: " + message + " in channel: " + channel + ", url: " + channel.getUrl());
                     logger.error(e.getMessage(), e);
                 } else {
+                    // 服务端，调用telnet方法，主要用于支持一些命令行操作
                     String echo = handler.telnet(channel, (String) message);
                     if (echo != null && echo.length() > 0) {
                         channel.send(echo);

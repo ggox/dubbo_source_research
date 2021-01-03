@@ -148,6 +148,7 @@ public class DefaultFuture implements ResponseFuture {
             if (future != null) {
                 future.doReceived(response);
             } else {
+                // 可能已经超时了，future不在了
                 logger.warn("The timeout response finally returned at "
                         + (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()))
                         + ", response " + response

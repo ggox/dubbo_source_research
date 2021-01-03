@@ -63,6 +63,7 @@ public abstract class AbstractZookeeperClient<TargetDataListener, TargetChildLis
         }
         int i = path.lastIndexOf('/');
         if (i > 0) {
+            // 递归创建父目录
             create(path.substring(0, i), false);
         }
         if (ephemeral) {

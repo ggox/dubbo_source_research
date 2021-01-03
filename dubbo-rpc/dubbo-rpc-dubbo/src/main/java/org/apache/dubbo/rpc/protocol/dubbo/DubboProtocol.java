@@ -99,6 +99,7 @@ public class DubboProtocol extends AbstractProtocol {
             }
 
             Invocation inv = (Invocation) message;
+            // 找到对应的invoker
             Invoker<?> invoker = getInvoker(channel, inv);
             // need to consider backward-compatibility if it's a callback
             if (Boolean.TRUE.toString().equals(inv.getAttachments().get(IS_CALLBACK_SERVICE_INVOKE))) {
@@ -123,14 +124,20 @@ public class DubboProtocol extends AbstractProtocol {
                     return null;
                 }
             }
+            // 设置 RpcContext,底层使用ThreadLocal实现
             RpcContext rpcContext = RpcContext.getContext();
+            // 设置对端地址
             rpcContext.setRemoteAddress(channel.getRemoteAddress());
+            // 执行调用链，通过构造匿名内部类的方式形成invoker链表结构，具体代码参见：org.apache.dubbo.rpc.protocol.ProtocolFilterWrapper.buildInvokerChain
+            // 最终一般会调用到 AbstractProxyInvoker,通过javassist字节码技术生成的代理类不会有反射开销
             Result result = invoker.invoke(inv);
 
+            // 如果是异步结果，使用异步api
             if (result instanceof AsyncRpcResult) {
                 return ((AsyncRpcResult) result).getResultFuture().thenApply(r -> (Object) r);
 
             } else {
+                // 同步结果，封装成一个有值的CompletableFuture返回,方便后续api的统一处理
                 return CompletableFuture.completedFuture(result);
             }
         }
@@ -159,9 +166,11 @@ public class DubboProtocol extends AbstractProtocol {
         }
 
         private void invoke(Channel channel, String methodKey) {
+            // 创建 invocation 对象
             Invocation invocation = createInvocation(channel, channel.getUrl(), methodKey);
             if (invocation != null) {
                 try {
+                    // 调用 received 方法处理
                     received(channel, invocation);
                 } catch (Throwable t) {
                     logger.warn("Failed to invoke event method " + invocation.getMethodName() + "(), cause: " + t.getMessage(), t);
@@ -174,7 +183,7 @@ public class DubboProtocol extends AbstractProtocol {
             if (method == null || method.length() == 0) {
                 return null;
             }
-
+            // 根据 method 创建 RpcInvocation
             RpcInvocation invocation = new RpcInvocation(method, new Class<?>[0], new Object[0]);
             invocation.setAttachment(Constants.PATH_KEY, url.getPath());
             invocation.setAttachment(Constants.GROUP_KEY, url.getParameter(Constants.GROUP_KEY));

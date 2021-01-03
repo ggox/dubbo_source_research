@@ -123,6 +123,7 @@ public abstract class AbstractPeer implements Endpoint, ChannelHandler {
         if (closed) {
             return;
         }
+        // 调用handler的connected,一般是 MultiMessageHandler
         handler.connected(ch);
     }
 

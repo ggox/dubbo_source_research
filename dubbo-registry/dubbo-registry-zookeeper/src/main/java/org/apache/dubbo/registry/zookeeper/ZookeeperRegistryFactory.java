@@ -39,6 +39,7 @@ public class ZookeeperRegistryFactory extends AbstractRegistryFactory {
 
     @Override
     public Registry createRegistry(URL url) {
+        // zookeeperTransporter 通过 ioc 注入，一般为 CuratorZookeeperTransporter
         return new ZookeeperRegistry(url, zookeeperTransporter);
     }
 

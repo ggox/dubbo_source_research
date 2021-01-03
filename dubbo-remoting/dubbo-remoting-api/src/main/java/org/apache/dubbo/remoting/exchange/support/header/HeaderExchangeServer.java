@@ -60,6 +60,7 @@ public class HeaderExchangeServer implements ExchangeServer {
     public HeaderExchangeServer(Server server) {
         Assert.notNull(server, "server == null");
         this.server = server;
+        // 启动空闲检测任务
         startIdleCheckTask(getUrl());
     }
 
@@ -101,8 +102,10 @@ public class HeaderExchangeServer implements ExchangeServer {
             final long max = (long) timeout;
             final long start = System.currentTimeMillis();
             if (getUrl().getParameter(Constants.CHANNEL_SEND_READONLYEVENT_KEY, true)) {
+                // 关闭时先处于只读状态（相当于半连接的状态）
                 sendChannelReadOnlyEvent();
             }
+            // 阻塞知道超时或者server的全部连接都处于关闭状态
             while (HeaderExchangeServer.this.isRunning()
                     && System.currentTimeMillis() - start < max) {
                 try {
