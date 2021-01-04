@@ -98,6 +98,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
     @Override
     public void doRegister(URL url) {
         try {
+            // 在 zookeeper 上注册 consumer 节点
             zkClient.create(toUrlPath(url), url.getParameter(Constants.DYNAMIC_KEY, true));
         } catch (Throwable e) {
             throw new RpcException("Failed to register " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);
@@ -149,6 +150,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
                 }
             } else {
                 List<URL> urls = new ArrayList<>();
+                // 分隔category的值
                 for (String path : toCategoriesPath(url)) {
                     ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
                     if (listeners == null) {
@@ -157,6 +159,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
                     }
                     ChildListener zkListener = listeners.get(listener);
                     if (zkListener == null) {
+                        // 子节点发生变化，会触发调用 ZookeeperRegistry.this.notify，这里的 parentPath 一般指的是providers，currentChilds是各个providers
                         listeners.putIfAbsent(listener, (parentPath, currentChilds) -> ZookeeperRegistry.this.notify(url, listener, toUrlsWithEmpty(url, parentPath, currentChilds)));
                         zkListener = listeners.get(listener);
                     }
@@ -231,6 +234,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
 
     private String[] toCategoriesPath(URL url) {
         String[] categories;
+        // 如果 category 是 *，默认添加 providers consumers routers configurators
         if (Constants.ANY_VALUE.equals(url.getParameter(Constants.CATEGORY_KEY))) {
             categories = new String[]{Constants.PROVIDERS_CATEGORY, Constants.CONSUMERS_CATEGORY,
                     Constants.ROUTERS_CATEGORY, Constants.CONFIGURATORS_CATEGORY};

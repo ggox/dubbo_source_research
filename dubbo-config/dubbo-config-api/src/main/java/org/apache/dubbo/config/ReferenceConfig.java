@@ -255,12 +255,16 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             return;
         }
         initialized = true;
+        // 先检查是不是本地服务或者stub服务
         checkStubAndLocal(interfaceClass);
+        // 检查mock服务
         checkMock(interfaceClass);
-        Map<String, String> map = new HashMap<String, String>();
 
+        Map<String, String> map = new HashMap<String, String>();
+        // 标记服务消费端
         map.put(Constants.SIDE_KEY, Constants.CONSUMER_SIDE);
         appendRuntimeParameters(map);
+        // 是否泛型
         if (!isGeneric()) {
             String revision = Version.getVersion(interfaceClass, version);
             if (revision != null && revision.length() > 0) {
@@ -292,19 +296,24 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                         map.put(methodConfig.getName() + ".retries", "0");
                     }
                 }
+                // 转换方法参数并保存起来
                 attributes.put(methodConfig.getName(), convertMethodConfig2AyncInfo(methodConfig));
             }
         }
 
+        // 获取需要注册到配置中心的ip地址
         String hostToRegistry = ConfigUtils.getSystemProperty(Constants.DUBBO_IP_TO_REGISTRY);
         if (StringUtils.isEmpty(hostToRegistry)) {
+            // 系统没有配置，直接获取本地地址
             hostToRegistry = NetUtils.getLocalHost();
         }
         map.put(Constants.REGISTER_IP_KEY, hostToRegistry);
 
+        // 核心方法，创建代理
         ref = createProxy(map);
 
         String serviceKey = URL.buildKey(interfaceName, group, version);
+        // 将ConsumerModel保存到ApplicationModel中
         ApplicationModel.initConsumerModel(serviceKey, buildConsumerModel(serviceKey, attributes));
     }
 
@@ -323,14 +332,18 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
     }
     @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
     private T createProxy(Map<String, String> map) {
+        // 判断服务实现类是否在同一个jvm中
         if (shouldJvmRefer(map)) {
             URL url = new URL(Constants.LOCAL_PROTOCOL, Constants.LOCALHOST_VALUE, 0, interfaceClass.getName()).addParameters(map);
+            // 最终调用的是InjvmProtocol
             invoker = refprotocol.refer(interfaceClass, url);
             if (logger.isInfoEnabled()) {
                 logger.info("Using injvm service " + interfaceClass.getName());
             }
-        } else {
-            if (url != null && url.length() > 0) { // user specified URL, could be peer-to-peer address, or register center's address.
+        } else { // 不是 injvm
+            // user specified URL, could be peer-to-peer address, or register center's address.
+            // 这里的url可以是点对点地址，也可以是注册中心地址
+            if (url != null && url.length() > 0) {
                 String[] us = Constants.SEMICOLON_SPLIT_PATTERN.split(url);
                 if (us != null && us.length > 0) {
                     for (String u : us) {
@@ -339,14 +352,18 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                             url = url.setPath(interfaceName);
                         }
                         if (Constants.REGISTRY_PROTOCOL.equals(url.getProtocol())) {
+                            // 如果是registry,在url中增加refer属性
                             urls.add(url.addParameterAndEncoded(Constants.REFER_KEY, StringUtils.toQueryString(map)));
                         } else {
+                            // 如果是点对点地址，直接调用ClusterUtils.mergeUrl合并属性到url
                             urls.add(ClusterUtils.mergeUrl(url, map));
                         }
                     }
                 }
             } else { // assemble URL from register center's configuration
+                // 没有指定 url，从注册中心获取配置
                 checkRegistry();
+                // 加载配置信息，false 表示不是服务提供端而是服务消费端
                 List<URL> us = loadRegistries(false);
                 if (CollectionUtils.isNotEmpty(us)) {
                     for (URL u : us) {
@@ -363,6 +380,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             }
 
             if (urls.size() == 1) {
+                // 根据注册协议调用不同的Protocol
                 invoker = refprotocol.refer(interfaceClass, urls.get(0));
             } else {
                 List<Invoker<?>> invokers = new ArrayList<Invoker<?>>();
@@ -370,9 +388,10 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 for (URL url : urls) {
                     invokers.add(refprotocol.refer(interfaceClass, url));
                     if (Constants.REGISTRY_PROTOCOL.equals(url.getProtocol())) {
-                        registryURL = url; // use last registry url
+                        registryURL = url; // use last registry url 使用最后一个 registryUrl
                     }
                 }
+                // cluster 作用于集群容错策略，默认是 failover，故障转移，即一个失败了转移到下一个尝试
                 if (registryURL != null) { // registry url is available
                     // use RegistryAwareCluster only when register's cluster is available
                     URL u = registryURL.addParameter(Constants.CLUSTER_KEY, RegistryAwareCluster.NAME);

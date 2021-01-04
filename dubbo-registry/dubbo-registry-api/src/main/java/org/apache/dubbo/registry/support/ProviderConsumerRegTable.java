@@ -82,6 +82,7 @@ public class ProviderConsumerRegTable {
     }
 
     public static void registerConsumer(Invoker invoker, URL registryUrl, URL consumerUrl, RegistryDirectory registryDirectory) {
+        // 封装成 ConsumerInvokerWrapper
         ConsumerInvokerWrapper wrapperInvoker = new ConsumerInvokerWrapper(invoker, registryUrl, consumerUrl, registryDirectory);
         String serviceUniqueName = consumerUrl.getServiceKey();
         Set<ConsumerInvokerWrapper> invokers = consumerInvokers.get(serviceUniqueName);

@@ -359,6 +359,7 @@ public class RegistryProtocol implements Protocol {
                 .setProtocol(url.getParameter(REGISTRY_KEY, DEFAULT_REGISTRY))
                 .removeParameter(REGISTRY_KEY)
                 .build();
+        // 这里得到不同协议的Registry，如 ZookeeperRegistry 等
         Registry registry = registryFactory.getRegistry(url);
         if (RegistryService.class.equals(type)) {
             return proxyFactory.getInvoker((T) registry, type, url);
@@ -368,6 +369,7 @@ public class RegistryProtocol implements Protocol {
         Map<String, String> qs = StringUtils.parseQueryString(url.getParameterAndDecoded(REFER_KEY));
         String group = qs.get(Constants.GROUP_KEY);
         if (group != null && group.length() > 0) {
+            // 如果group有多个
             if ((COMMA_SPLIT_PATTERN.split(group)).length > 1 || "*".equals(group)) {
                 return doRefer(getMergeableCluster(), registry, type, url);
             }
@@ -388,6 +390,7 @@ public class RegistryProtocol implements Protocol {
         URL subscribeUrl = new URL(CONSUMER_PROTOCOL, parameters.remove(REGISTER_IP_KEY), 0, type.getName(), parameters);
         if (!ANY_VALUE.equals(url.getServiceInterface()) && url.getParameter(REGISTER_KEY, true)) {
             directory.setRegisteredConsumerUrl(getRegisteredConsumerUrl(subscribeUrl, url));
+            // 注册消费者
             registry.register(directory.getRegisteredConsumerUrl());
         }
         directory.buildRouterChain(subscribeUrl);
@@ -395,6 +398,7 @@ public class RegistryProtocol implements Protocol {
                 PROVIDERS_CATEGORY + "," + CONFIGURATORS_CATEGORY + "," + ROUTERS_CATEGORY));
 
         Invoker invoker = cluster.join(directory);
+        // 将 consumeInvoker 封装成 ConsumerInvokerWrapper 保存到 ProviderConsumerRegTable 的 map 中
         ProviderConsumerRegTable.registerConsumer(invoker, url, subscribeUrl, directory);
         return invoker;
     }

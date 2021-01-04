@@ -154,8 +154,9 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
      * Check whether the registry config is exists, and then conversion it to {@link RegistryConfig}
      */
     protected void checkRegistry() {
+        // 向后兼容处理
         loadRegistriesFromBackwardConfig();
-
+        // 将 registryId 转化成 RegistryConfig
         convertRegistryIdsToRegistries();
 
         for (RegistryConfig registryConfig : registries) {
@@ -523,6 +524,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         if (StringUtils.isEmpty(registryIds)) {
             if (CollectionUtils.isEmpty(registries)) {
                 setRegistries(
+                        // 默认注册中心信息
                         ConfigManager.getInstance().getDefaultRegistries()
                         .filter(CollectionUtils::isNotEmpty)
                         .orElseGet(() -> {
@@ -556,6 +558,9 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
 
     }
 
+    /**
+     * 向后兼容，处理 -Ddubbo.registry.address 配置项，目前这个配置项已经 deprecated
+     */
     private void loadRegistriesFromBackwardConfig() {
         // for backward compatibility
         // -Ddubbo.registry.address is now deprecated.
@@ -580,8 +585,10 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
      * there's no config center specified explicitly.
      */
     private void useRegistryForConfigIfNecessary() {
+        // 兼容性考虑，如果注册协议是zookeeper，并且没有指定具体的配置中心
         registries.stream().filter(RegistryConfig::isZookeeperProtocol).findFirst().ifPresent(rc -> {
             // we use the loading status of DynamicConfiguration to decide whether ConfigCenter has been initiated.
+            // 通过 dynamicCOnfiguration 是否为 null 判断 configCenter 是否初始化
             Environment.getInstance().getDynamicConfiguration().orElseGet(() -> {
                 ConfigManager configManager = ConfigManager.getInstance();
                 ConfigCenterConfig cc = configManager.getConfigCenter().orElse(new ConfigCenterConfig());
@@ -589,6 +596,7 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
                 cc.setAddress(rc.getAddress());
                 cc.setHighestPriority(false);
                 setConfigCenter(cc);
+                // 启动 configCenter
                 startConfigCenter();
                 return null;
             });

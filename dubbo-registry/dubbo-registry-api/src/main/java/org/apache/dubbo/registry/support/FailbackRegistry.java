@@ -426,6 +426,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
             return url.hashCode() + notifyListener.hashCode();
         }
 
+        // 重写了equals
         @Override
         public boolean equals(Object obj) {
             if (obj instanceof Holder) {

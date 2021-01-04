@@ -193,9 +193,13 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
     @Override
     public synchronized void notify(List<URL> urls) {
         Map<String, List<URL>> categoryUrls = urls.stream()
+                // 不为空，
                 .filter(Objects::nonNull)
+                // 合法的 category
                 .filter(this::isValidCategory)
+                // 不兼容 2.6.x
                 .filter(this::isNotCompatibleFor26x)
+                // 分组: configurators/routers/providers
                 .collect(Collectors.groupingBy(url -> {
                     if (UrlUtils.isConfigurator(url)) {
                         return CONFIGURATORS_CATEGORY;
@@ -207,13 +211,15 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                     return "";
                 }));
 
+        // 处理 configurators
         List<URL> configuratorURLs = categoryUrls.getOrDefault(CONFIGURATORS_CATEGORY, Collections.emptyList());
         this.configurators = Configurator.toConfigurators(configuratorURLs).orElse(this.configurators);
 
+        // 处理 routers
         List<URL> routerURLs = categoryUrls.getOrDefault(ROUTERS_CATEGORY, Collections.emptyList());
         toRouters(routerURLs).ifPresent(this::addRouters);
 
-        // providers
+        // providers 处理 providers
         List<URL> providerURLs = categoryUrls.getOrDefault(PROVIDERS_CATEGORY, Collections.emptyList());
         refreshOverrideAndInvoker(providerURLs);
     }
@@ -242,6 +248,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
 
         if (invokerUrls.size() == 1
                 && invokerUrls.get(0) != null
+                // 判断协议是否为空，如果为空，标记为空并且invokers清空
                 && Constants.EMPTY_PROTOCOL.equals(invokerUrls.get(0).getProtocol())) {
             this.forbidden = true; // Forbid to access
             this.invokers = Collections.emptyList();

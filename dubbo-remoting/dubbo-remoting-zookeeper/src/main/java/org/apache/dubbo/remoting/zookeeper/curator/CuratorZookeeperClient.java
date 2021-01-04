@@ -279,6 +279,7 @@ public class CuratorZookeeperClient extends AbstractZookeeperClient<CuratorZooke
                         // if client connect or disconnect to server, zookeeper will queue
                         // watched event(Watcher.Event.EventType.None, .., path = null).
                         StringUtils.isNotEmpty(path)
+                                // CuratorWatcher只会触发一次，所以要重新注册自己
                                 ? client.getChildren().usingWatcher(this).forPath(path)
                                 : Collections.<String>emptyList());
             }

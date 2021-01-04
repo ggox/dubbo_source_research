@@ -62,8 +62,10 @@ public abstract class AbstractDirectory<T> implements Directory<T> {
             throw new IllegalArgumentException("url == null");
         }
 
+        // 如果是registry,特殊处理一下
         if (url.getProtocol().equals(Constants.REGISTRY_PROTOCOL)) {
             Map<String, String> queryMap = StringUtils.parseQueryString(url.getParameterAndDecoded(Constants.REFER_KEY));
+            // 增加查询参数，移除monitor
             this.url = url.addParameters(queryMap).removeParameter(Constants.MONITOR_KEY);
         } else {
             this.url = url;
