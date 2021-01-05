@@ -64,6 +64,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     public FailbackRegistry(URL url) {
         super(url);
+        // 定时重试间隔时间，默认4秒
         this.retryPeriod = url.getParameter(Constants.REGISTRY_RETRY_PERIOD_KEY, Constants.DEFAULT_REGISTRY_RETRY_PERIOD);
 
         // since the retry task will not be very much. 128 ticks is enough.
@@ -102,6 +103,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         oldOne = failedRegistered.putIfAbsent(url, newTask);
         if (oldOne == null) {
             // never has a retry task. then start a new task for retry.
+            // 启动一个任务开始重试
             retryTimer.newTimeout(newTask, retryPeriod, TimeUnit.MILLISECONDS);
         }
     }
@@ -366,22 +368,24 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     protected void recover() throws Exception {
-        // register
+        // register 恢复已经注册的url
         Set<URL> recoverRegistered = new HashSet<URL>(getRegistered());
         if (!recoverRegistered.isEmpty()) {
             if (logger.isInfoEnabled()) {
                 logger.info("Recover register url " + recoverRegistered);
             }
+            // 将需要恢复注册的url加入失败集合，会有定时任务不停的重试失败的url
             for (URL url : recoverRegistered) {
                 addFailedRegistered(url);
             }
         }
-        // subscribe
+        // subscribe 恢复之前的订阅，包括设置的监听器
         Map<URL, Set<NotifyListener>> recoverSubscribed = new HashMap<URL, Set<NotifyListener>>(getSubscribed());
         if (!recoverSubscribed.isEmpty()) {
             if (logger.isInfoEnabled()) {
                 logger.info("Recover subscribe url " + recoverSubscribed.keySet());
             }
+            // 同上，将订阅的url和listener添加到失败集合中，有定时任务不停重试
             for (Map.Entry<URL, Set<NotifyListener>> entry : recoverSubscribed.entrySet()) {
                 URL url = entry.getKey();
                 for (NotifyListener listener : entry.getValue()) {

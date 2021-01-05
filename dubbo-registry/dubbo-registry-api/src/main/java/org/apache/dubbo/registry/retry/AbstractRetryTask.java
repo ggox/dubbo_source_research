@@ -77,7 +77,9 @@ public abstract class AbstractRetryTask implements TimerTask {
         this.registry = registry;
         this.taskName = taskName;
         cancel = false;
+        // 重试间隔，默认5秒
         this.retryPeriod = url.getParameter(Constants.REGISTRY_RETRY_PERIOD_KEY, Constants.DEFAULT_REGISTRY_RETRY_PERIOD);
+        // 最大重试次数，默认三次
         this.retryTimes = url.getParameter(Constants.REGISTRY_RETRY_TIMES_KEY, Constants.DEFAULT_REGISTRY_RETRY_TIMES);
     }
 
@@ -98,7 +100,7 @@ public abstract class AbstractRetryTask implements TimerTask {
         if (timer.isStop() || timeout.isCancelled() || isCancel()) {
             return;
         }
-        times++;
+        times++; // 重试次数加1，为了防止无限重试的情况，对最大重试次数做了限制
         timer.newTimeout(timeout.task(), tick, TimeUnit.MILLISECONDS);
     }
 
@@ -108,7 +110,7 @@ public abstract class AbstractRetryTask implements TimerTask {
             // other thread cancel this timeout or stop the timer.
             return;
         }
-        if (times > retryTimes) {
+        if (times > retryTimes) { // 限制重试次数
             // reach the most times of retry.
             logger.warn("Final failed to execute task " + taskName + ", url: " + url + ", retry " + retryTimes + " times.");
             return;
@@ -121,6 +123,7 @@ public abstract class AbstractRetryTask implements TimerTask {
         } catch (Throwable t) { // Ignore all the exceptions and wait for the next retry
             logger.warn("Failed to execute task " + taskName + ", url: " + url + ", waiting for again, cause:" + t.getMessage(), t);
             // reput this task when catch exception.
+            // 失败了会将任务重新放到时间轮中，达到不停重试的效果
             reput(timeout, retryPeriod);
         }
     }

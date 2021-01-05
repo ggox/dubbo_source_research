@@ -69,6 +69,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
         }
         this.root = group;
         zkClient = zookeeperTransporter.connect(url);
+        // 增加状态监听器，在重连时执行恢复动作，之所以这么做的原因主要是和zookeeper的通信机制有关的：当zookeeper的Client和Server连接断开，或者心跳超时，那么Server会将相应Client注册的临时节点删除，当然注册的Listener也相应删除
         zkClient.addStateListener(state -> {
             if (state == StateListener.RECONNECTED) {
                 try {
