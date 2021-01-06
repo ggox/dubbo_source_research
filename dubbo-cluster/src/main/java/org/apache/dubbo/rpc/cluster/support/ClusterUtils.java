@@ -83,6 +83,7 @@ public class ClusterUtils {
             // But when comes to group merger, there is an exception, the consumer group may be '*' while the provider group can be empty or any other values.
             String remoteGroup = map.get(Constants.GROUP_KEY);
             String remoteRelease = map.get(Constants.RELEASE_KEY);
+            // putAll consumer端的map会覆盖provider端map
             map.putAll(localMap);
             if (StringUtils.isNotEmpty(remoteGroup)) {
                 map.put(Constants.GROUP_KEY, remoteGroup);

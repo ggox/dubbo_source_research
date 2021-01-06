@@ -417,17 +417,19 @@ public class DubboProtocol extends AbstractProtocol {
 
     private ExchangeClient[] getClients(URL url) {
         // whether to share connection
-
+        // 是否共享连接
         boolean useShareConnect = false;
 
         int connections = url.getParameter(Constants.CONNECTIONS_KEY, 0);
         List<ReferenceCountExchangeClient> shareClients = null;
         // if not configured, connection is shared, otherwise, one connection for one service
+        // 默认是使用共享连接的，否则一个service单独一个连接
         if (connections == 0) {
             useShareConnect = true;
 
             /**
              * The xml configuration should have a higher priority than properties.
+             * xml 配置优先级高于properties
              */
             String shareConnectionsStr = url.getParameter(Constants.SHARE_CONNECTIONS_KEY, (String) null);
             connections = Integer.parseInt(StringUtils.isBlank(shareConnectionsStr) ? ConfigUtils.getProperty(Constants.SHARE_CONNECTIONS_KEY,
@@ -459,6 +461,7 @@ public class DubboProtocol extends AbstractProtocol {
         List<ReferenceCountExchangeClient> clients = referenceClientMap.get(key);
 
         if (checkClientCanUse(clients)) {
+            // 所有client的引用加1
             batchClientRefIncr(clients);
             return clients;
         }
@@ -466,7 +469,7 @@ public class DubboProtocol extends AbstractProtocol {
         locks.putIfAbsent(key, new Object());
         synchronized (locks.get(key)) {
             clients = referenceClientMap.get(key);
-            // dubbo check
+            // dubbo check 双重检测
             if (checkClientCanUse(clients)) {
                 batchClientRefIncr(clients);
                 return clients;
@@ -477,10 +480,12 @@ public class DubboProtocol extends AbstractProtocol {
 
             // If the clients is empty, then the first initialization is
             if (CollectionUtils.isEmpty(clients)) {
+                // 为空时构建clients
                 clients = buildReferenceCountExchangeClientList(url, connectNum);
                 referenceClientMap.put(key, clients);
 
             } else {
+                // 不为空，证明存在失效的client，替换之
                 for (int i = 0; i < clients.size(); i++) {
                     ReferenceCountExchangeClient referenceCountExchangeClient = clients.get(i);
                     // If there is a client in the list that is no longer available, create a new one to replace him.
@@ -516,6 +521,7 @@ public class DubboProtocol extends AbstractProtocol {
 
         for (ReferenceCountExchangeClient referenceCountExchangeClient : referenceCountExchangeClients) {
             // As long as one client is not available, you need to replace the unavailable client with the available one.
+            // 只要一个连接不可用，就返回false
             if (referenceCountExchangeClient == null || referenceCountExchangeClient.isClosed()) {
                 return false;
             }
@@ -549,6 +555,7 @@ public class DubboProtocol extends AbstractProtocol {
      * @return
      */
     private List<ReferenceCountExchangeClient> buildReferenceCountExchangeClientList(URL url, int connectNum) {
+        // 写时复制list
         List<ReferenceCountExchangeClient> clients = new CopyOnWriteArrayList<>();
 
         for (int i = 0; i < connectNum; i++) {
@@ -597,6 +604,7 @@ public class DubboProtocol extends AbstractProtocol {
                 client = new LazyConnectExchangeClient(url, requestHandler);
 
             } else {
+                // 连接服务端, 内部默认通过netty构建长连接
                 client = Exchangers.connect(url, requestHandler);
             }
 

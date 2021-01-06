@@ -152,6 +152,7 @@ public abstract class Proxy {
                 }
                 ccp.addInterface(ics[i]);
 
+                // 动态添加method方法
                 for (Method method : ics[i].getMethods()) {
                     String desc = ReflectUtils.getDesc(method);
                     if (worked.contains(desc)) {
@@ -181,22 +182,28 @@ public abstract class Proxy {
                 pkg = PACKAGE_NAME;
             }
 
-            // create ProxyInstance class.
+            // create ProxyInstance class. 创建代理实例的class字节码
             String pcn = pkg + ".proxy" + id;
             ccp.setClassName(pcn);
+            // 添加方法静态字段
             ccp.addField("public static java.lang.reflect.Method[] methods;");
+            // 添加 handler 字段
             ccp.addField("private " + InvocationHandler.class.getName() + " handler;");
+            // 添加 带有 InvocationHandler 参数的构造方法，并将参数赋值给 handler
             ccp.addConstructor(Modifier.PUBLIC, new Class<?>[]{InvocationHandler.class}, new Class<?>[0], "handler=$1;");
+            // 添加默认构造方法
             ccp.addDefaultConstructor();
             Class<?> clazz = ccp.toClass();
+            // 提前利用反射将method字段赋值给methods字段，这样运行时就没有反射的性能开销
             clazz.getField("methods").set(null, methods.toArray(new Method[0]));
 
-            // create Proxy class.
+            // create Proxy class. 创建Proxy的class字节码
             String fcn = Proxy.class.getName() + id;
             ccm = ClassGenerator.newInstance(cl);
             ccm.setClassName(fcn);
             ccm.addDefaultConstructor();
             ccm.setSuperClass(Proxy.class);
+            // 增加一个 newInstance 方法，实现是构造一个代理实例（ProxyInstance）对象，将 InvocationHandler 传递给代理实例的有参构造器
             ccm.addMethod("public Object newInstance(" + InvocationHandler.class.getName() + " h){ return new " + pcn + "($1); }");
             Class<?> pc = ccm.toClass();
             proxy = (Proxy) pc.newInstance();

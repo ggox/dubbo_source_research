@@ -356,6 +356,7 @@ public class RegistryProtocol implements Protocol {
     @SuppressWarnings("unchecked")
     public <T> Invoker<T> refer(Class<T> type, URL url) throws RpcException {
         url = URLBuilder.from(url)
+                // 将 registry 替换成具体的协议，如 zookeeper 等
                 .setProtocol(url.getParameter(REGISTRY_KEY, DEFAULT_REGISTRY))
                 .removeParameter(REGISTRY_KEY)
                 .build();
@@ -386,14 +387,19 @@ public class RegistryProtocol implements Protocol {
         directory.setRegistry(registry);
         directory.setProtocol(protocol);
         // all attributes of REFER_KEY
+        // 这里的RegistryDirectory#getUrl是overrideDirectoryUrl，已经将patameters替换为了refer(也即消费端)中的值了
         Map<String, String> parameters = new HashMap<String, String>(directory.getUrl().getParameters());
+        // 构造消费端订阅url
         URL subscribeUrl = new URL(CONSUMER_PROTOCOL, parameters.remove(REGISTER_IP_KEY), 0, type.getName(), parameters);
         if (!ANY_VALUE.equals(url.getServiceInterface()) && url.getParameter(REGISTER_KEY, true)) {
+            // getRegisteredConsumerUrl 主要复制 CATEGORY_KEY CHECK_KEY，得到的url复制到RegistryDirectory的registeredConsumerUrl上
             directory.setRegisteredConsumerUrl(getRegisteredConsumerUrl(subscribeUrl, url));
             // 注册消费者
             registry.register(directory.getRegisteredConsumerUrl());
         }
+        // 构建路由链
         directory.buildRouterChain(subscribeUrl);
+        // 订阅provider的地方
         directory.subscribe(subscribeUrl.addParameter(CATEGORY_KEY,
                 PROVIDERS_CATEGORY + "," + CONFIGURATORS_CATEGORY + "," + ROUTERS_CATEGORY));
 
