@@ -293,6 +293,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         } catch (Exception e) {
             Throwable t = e;
 
+            // 如果订阅失败（可能注册中心宕机了），则从本地缓存文件中加载服务端列表
             List<URL> urls = getCacheUrls(url);
             if (CollectionUtils.isNotEmpty(urls)) {
                 notify(url, listener, urls);
