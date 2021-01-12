@@ -23,6 +23,8 @@ import org.apache.dubbo.rpc.cluster.Directory;
 
 /**
  * mock impl
+ * 会通过 ExtensionLoader 的 aop 功能对原始 cluster 进行包装，主要用于服务降级、mock等
+ * 每次其他 cluster join 时都会先调用 MockClusterWrapper
  *
  */
 public class MockClusterWrapper implements Cluster {

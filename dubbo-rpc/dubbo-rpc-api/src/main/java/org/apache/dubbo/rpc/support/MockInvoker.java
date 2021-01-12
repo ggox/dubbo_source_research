@@ -66,7 +66,7 @@ final public class MockInvoker<T> implements Invoker<T> {
         } else if ("false".equals(mock)) {
             value = false;
         } else if (mock.length() >= 2 && (mock.startsWith("\"") && mock.endsWith("\"")
-                || mock.startsWith("\'") && mock.endsWith("\'"))) {
+                || mock.startsWith("\'") && mock.endsWith("\'"))) { // 去除引号
             value = mock.subSequence(1, mock.length() - 1);
         } else if (returnTypes != null && returnTypes.length > 0 && returnTypes[0] == String.class) {
             value = mock;
@@ -87,22 +87,26 @@ final public class MockInvoker<T> implements Invoker<T> {
 
     @Override
     public Result invoke(Invocation invocation) throws RpcException {
+        // 先获取方法级别的mock
         String mock = getUrl().getParameter(invocation.getMethodName() + "." + Constants.MOCK_KEY);
         if (invocation instanceof RpcInvocation) {
             ((RpcInvocation) invocation).setInvoker(this);
         }
+        // 方法级别的mock没有则获取通用mock
         if (StringUtils.isBlank(mock)) {
             mock = getUrl().getParameter(Constants.MOCK_KEY);
         }
-
+        // 通用mock没有直接抛异常
         if (StringUtils.isBlank(mock)) {
             throw new RpcException(new IllegalAccessException("mock can not be null. url :" + url));
         }
+        // 格式化mock
         mock = normalizeMock(URL.decode(mock));
         if (mock.startsWith(Constants.RETURN_PREFIX)) {
             mock = mock.substring(Constants.RETURN_PREFIX.length()).trim();
             try {
                 Type[] returnTypes = RpcUtils.getReturnTypes(invocation);
+                // 根据返回类型，解析mock值
                 Object value = parseMockValue(mock, returnTypes);
                 return new RpcResult(value);
             } catch (Exception ew) {
@@ -117,7 +121,7 @@ final public class MockInvoker<T> implements Invoker<T> {
                 Throwable t = getThrowable(mock);
                 throw new RpcException(RpcException.BIZ_EXCEPTION, t);
             }
-        } else { //impl mock
+        } else { //impl mock get一个Invoker调用
             try {
                 Invoker<T> invoker = getInvoker(mock);
                 return invoker.invoke(invocation);
@@ -151,14 +155,16 @@ final public class MockInvoker<T> implements Invoker<T> {
     @SuppressWarnings("unchecked")
     private Invoker<T> getInvoker(String mockService) {
         Invoker<T> invoker = (Invoker<T>) mocks.get(mockService);
-        if (invoker != null) {
+        if (invoker != null) { // 如果缓存命中，直接返回
             return invoker;
         }
 
         Class<T> serviceType = (Class<T>) ReflectUtils.forName(url.getServiceInterface());
+        // 核心，获取mock对象
         T mockObject = (T) getMockObject(mockService, serviceType);
+        // 通过proxyFactory生成代理invoker
         invoker = proxyFactory.getInvoker(mockObject, serviceType, url);
-        if (mocks.size() < 10000) {
+        if (mocks.size() < 10000) { // 如果缓存没有满，则放入缓存
             mocks.put(mockService, invoker);
         }
         return invoker;
@@ -166,16 +172,17 @@ final public class MockInvoker<T> implements Invoker<T> {
 
     @SuppressWarnings("unchecked")
     public static Object getMockObject(String mockService, Class serviceType) {
-        if (ConfigUtils.isDefault(mockService)) {
+        if (ConfigUtils.isDefault(mockService)) { // 隐含规则：如果是 default，则mock对象的class名称就是借口名称加上Mock
             mockService = serviceType.getName() + "Mock";
         }
-
+        // 加载类
         Class<?> mockClass = ReflectUtils.forName(mockService);
+        // 校验类型
         if (!serviceType.isAssignableFrom(mockClass)) {
             throw new IllegalStateException("The mock class " + mockClass.getName() +
                     " not implement interface " + serviceType.getName());
         }
-
+        // 实例化
         try {
             return mockClass.newInstance();
         } catch (InstantiationException e) {

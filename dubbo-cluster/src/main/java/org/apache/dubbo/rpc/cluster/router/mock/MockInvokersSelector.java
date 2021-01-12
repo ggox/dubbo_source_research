@@ -46,14 +46,15 @@ public class MockInvokersSelector extends AbstractRouter {
         if (CollectionUtils.isEmpty(invokers)) {
             return invokers;
         }
-
+        // 如果附件都为空，直接返回正常invokers
         if (invocation.getAttachments() == null) {
             return getNormalInvokers(invokers);
         } else {
             String value = invocation.getAttachments().get(Constants.INVOCATION_NEED_MOCK);
+            // 如果 value为空，也返回正常invokers
             if (value == null) {
                 return getNormalInvokers(invokers);
-            } else if (Boolean.TRUE.toString().equalsIgnoreCase(value)) {
+            } else if (Boolean.TRUE.toString().equalsIgnoreCase(value)) { // 如果 invocation.need.mock 为 true,返回 mockInvokers
                 return getMockedInvokers(invokers);
             }
         }

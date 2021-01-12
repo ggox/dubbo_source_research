@@ -70,22 +70,24 @@ public class MockClusterInvoker<T> implements Invoker<T> {
     public Result invoke(Invocation invocation) throws RpcException {
         Result result = null;
 
+        // 获取url中的mock值
         String value = directory.getUrl().getMethodParameter(invocation.getMethodName(), Constants.MOCK_KEY, Boolean.FALSE.toString()).trim();
+        // 如果没有mock或者为false，则直接放行往下调用
         if (value.length() == 0 || value.equalsIgnoreCase("false")) {
             //no mock
             result = this.invoker.invoke(invocation);
-        } else if (value.startsWith("force")) {
+        } else if (value.startsWith("force")) { // 如果是force，表示服务降级，不继续发起远程调用，直接返回mock值
             if (logger.isWarnEnabled()) {
                 logger.warn("force-mock: " + invocation.getMethodName() + " force-mock enabled , url : " + directory.getUrl());
             }
             //force:direct mock
             result = doMockInvoke(invocation, null);
-        } else {
+        } else { // 其他比如是 fail 或者 true,这回发起远程调用，当失败时返回mock值
             //fail-mock
             try {
                 result = this.invoker.invoke(invocation);
             } catch (RpcException e) {
-                if (e.isBiz()) {
+                if (e.isBiz()) { // 如果是业务异常，直接抛出异常无需mock
                     throw e;
                 }
                 
@@ -103,14 +105,15 @@ public class MockClusterInvoker<T> implements Invoker<T> {
         Result result = null;
         Invoker<T> minvoker;
 
+        // 先从directory服务中获取invokers
         List<Invoker<T>> mockInvokers = selectMockInvoker(invocation);
-        if (CollectionUtils.isEmpty(mockInvokers)) {
+        if (CollectionUtils.isEmpty(mockInvokers)) { // 如果无可用invoker，直接new一个MockInvoker
             minvoker = (Invoker<T>) new MockInvoker(directory.getUrl());
         } else {
-            minvoker = mockInvokers.get(0);
+            minvoker = mockInvokers.get(0); // 如果有直接返回第一个
         }
         try {
-            result = minvoker.invoke(invocation);
+            result = minvoker.invoke(invocation); // 直接调用这个invoker
         } catch (RpcException me) {
             if (me.isBiz()) {
                 result = new RpcResult(me.getCause());
@@ -137,6 +140,8 @@ public class MockClusterInvoker<T> implements Invoker<T> {
      * directory.list() will return a list of normal invokers if Constants.INVOCATION_NEED_MOCK is present in invocation, otherwise, a list of mock invokers will return.
      * if directory.list() returns more than one mock invoker, only one of them will be used.
      *
+     * 个人理解：这里的注释有错误吧，present应该是absent, 当invocation的attachment中没有 Constants.INVOCATION_NEED_MOCK 时才会返回正常invokers,否则返回mockInvokers
+     *
      * @param invocation
      * @return
      */
@@ -145,8 +150,10 @@ public class MockClusterInvoker<T> implements Invoker<T> {
         //TODO generic invoker？
         if (invocation instanceof RpcInvocation) {
             //Note the implicit contract (although the description is added to the interface declaration, but extensibility is a problem. The practice placed in the attachment needs to be improved)
+            // 将 Constants.INVOCATION_NEED_MOCK 为 true，添加到 invocation 的 attachment 中
             ((RpcInvocation) invocation).setAttachment(Constants.INVOCATION_NEED_MOCK, Boolean.TRUE.toString());
-            //directory will return a list of normal invokers if Constants.INVOCATION_NEED_MOCK is present in invocation, otherwise, a list of mock invokers will return.
+            //directory will return a list of normal invokers if Constants.INVOCATION_NEED_MOCK is absent in invocation, otherwise, a list of mock invokers will return.
+            // 因为提前设置了 Constants.INVOCATION_NEED_MOCK 为 true, 所以 directory#list 返回mock的invokers,这里的注释有问题，应该不是present而是absent
             try {
                 invokers = directory.list(invocation);
             } catch (RpcException e) {
